@@ -1,10 +1,15 @@
 [package]
-name = "minifun"
+name = "minifun-cli"
 version = "0.1.0"
 authors = ["Yannick Schillo <yschillo@yansonline.de>"]
 edition = "2018"
 
+[[bin]]
+name = "minifun"
+path = "src/main.rs"
+
 [dependencies]
-libminifun = { path = "src/libminifun" }
+#minifun = { path = "../minifun" }
+minifun = { git = "https://github.com/tp971/minifun" }
 getopts = "0.2"
 rustyline = "2.1.0"

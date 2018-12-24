@@ -1,5 +1,5 @@
 use getopts::Options;
-use libminifun::{Scope, parser::Parser};
+use minifun::{Scope, parser::Parser};
 use std::env;
 use std::fs::File;
 use std::io;
