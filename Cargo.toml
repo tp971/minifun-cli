@@ -1,0 +1,10 @@
+[package]
+name = "minifun"
+version = "0.1.0"
+authors = ["Yannick Schillo <yschillo@yansonline.de>"]
+edition = "2018"
+
+[dependencies]
+libminifun = { path = "src/libminifun" }
+getopts = "0.2"
+rustyline = "2.1.0"
