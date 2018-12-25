@@ -149,7 +149,7 @@ dependencies = [
 [[package]]
 name = "minifun"
 version = "0.1.0"
-source = "git+https://github.com/tp971/minifun#f9f3f014a1621d157ded8a6919486ce6c62e6029"
+source = "git+https://github.com/tp971/minifun#3ee8a45d2ee1e6d793ec5fbaaf2f0b4402b2e176"
 
 [[package]]
 name = "minifun-cli"
