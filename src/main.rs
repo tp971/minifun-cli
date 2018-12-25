@@ -46,7 +46,7 @@ fn main() {
                         Ok(_) => {},
                         Err(e) => {
                             println!("{}", e);
-                            continue
+                            break
                         }
                     }
                 },
@@ -54,7 +54,7 @@ fn main() {
                     break,
                 Err(e) => {
                     println!("{}", e);
-                    continue
+                    break
                 }
             };
         }
