@@ -1,11 +1,13 @@
 use getopts::Options;
-use minifun::{Scope, parser::Parser};
+use minifun::{Scope, Value, intrinsic_fn, intrinsic_fn_move, parser::Parser};
+use std::cell::RefCell;
 use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::process;
+use std::rc::Rc;
 
 fn main() {
     let mut opts = Options::new();
@@ -29,34 +31,61 @@ fn main() {
     }
 
     let mut scope = Scope::new();
+    minifun::insert_stdlib(&mut scope);
+    scope.insert("val_dump".to_string(), intrinsic_fn! {
+        (Value) -> ():
+            |_, val| { println!("{}", val); Ok(()) }
+    });
+    scope.insert("print".to_string(), intrinsic_fn! {
+        (Str) -> ():
+            |_, (s, _)| { print!("{}", s); Ok(()) }
+    });
+    scope.insert("println".to_string(), intrinsic_fn! {
+        (Str) -> ():
+            |_, (s, _)| { println!("{}", s); Ok(()) }
+    });
+    scope.insert("eprint".to_string(), intrinsic_fn! {
+        (Str) -> ():
+            |_, (s, _)| { eprint!("{}", s); Ok(()) }
+    });
+    scope.insert("eprintln".to_string(), intrinsic_fn! {
+        (Str) -> ():
+            |_, (s, _)| { eprintln!("{}", s); Ok(()) }
+    });
+
+    let readln = RefCell::new(rustyline::Editor::<()>::new());
+    scope.insert("read_line".to_string(), intrinsic_fn_move! {
+        (Str) -> Value:
+            |_, (prompt, _)| {
+                let mut readln = readln.borrow_mut();
+                match readln.readline(prompt) {
+                    Ok(line) => {
+                        if line != "" {
+                            readln.add_history_entry(line.clone());
+                        }
+                        let size = line.chars().count() as i64;
+                        Ok(Rc::new(Value::Tuple(vec![
+                            Rc::new(Value::Str(line, size))
+                        ])))
+                    },
+                    Err(_) =>
+                        Ok(Rc::new(Value::Tuple(vec![])))
+                }
+            }
+    });
 
     for next in matches.free.iter() {
-        let f = match File::open(next) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("minifun: Cannot open file {}: {}", next, e);
-                continue
-            }
-        };
-        let mut parser = Parser::new(next.clone(), BufReader::new(f).bytes());
-        loop {
-            match parser.parse_stmt_eof() {
-                Ok(Some(stmt)) => {
-                    match stmt.eval(&mut scope) {
-                        Ok(_) => {},
-                        Err(e) => {
-                            println!("{}", e);
-                            break
-                        }
-                    }
-                },
-                Ok(None) =>
-                    break,
+        if next == "-" {
+            process_input("stdin".to_string(), io::stdin(), &mut scope);
+        } else {
+            let f = match File::open(next) {
+                Ok(f) => f,
                 Err(e) => {
-                    println!("{}", e);
-                    break
+                    eprintln!("minifun: Cannot open file {}: {}", next, e);
+                    continue
                 }
             };
+            process_input(next.clone(), f, &mut scope);
         }
     }
 
@@ -74,16 +103,42 @@ fn main() {
                         Ok(None) =>
                             {},
                         Err(e) =>
-                            println!("{}", e)
+                            eprintln!("{}", e)
                     }
                 },
                 Ok(None) =>
                     break,
                 Err(e) => {
-                    println!("{}", e);
+                    eprintln!("{}", e);
                     parser.skipline();
                 }
             };
+        }
+    }
+}
+
+fn process_input<R: Read>(name: String, r: R, scope: &mut Scope) {
+    let mut parser = Parser::new(name, BufReader::new(r).bytes());
+    let mut stmts = Vec::new();
+    loop {
+        match parser.parse_stmt_eof() {
+            Ok(Some(stmt)) =>
+                stmts.push(stmt),
+            Ok(None) =>
+                break,
+            Err(e) => {
+                eprintln!("{}", e);
+                return
+            }
+        };
+    }
+    for stmt in stmts {
+        match stmt.eval(scope) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("{}", e);
+                return
+            }
         }
     }
 }
